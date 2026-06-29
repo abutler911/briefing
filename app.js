@@ -368,7 +368,7 @@ fetchWeather();
 setInterval(fetchWeather, 600000); // refresh every 10 min
 
 // ── Background ──
-// Rotating dark atmospheric images from Unsplash (free, no API key needed)
+// Curated fallback set, used when no Unsplash Access Key is configured.
 const bgImages = [
   "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80", // mountains
   "https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=1920&q=80", // fog mountains
@@ -377,26 +377,93 @@ const bgImages = [
   "https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?w=1920&q=80", // valley
 ];
 
-// bgNudge cycles to the next image on manual shuffle; resets when the period rolls over
-let bgNudge = 0;
-function loadBackground(attempt = 0) {
-  if (attempt >= bgImages.length) return; // every image failed; keep base bg
-  const img = bgImages[(periodIndex() + bgNudge + attempt) % bgImages.length];
+const UNSPLASH_UTM = "?utm_source=briefing&utm_medium=referral";
+
+function applyBackground(url, onError) {
   const bgEl = document.getElementById("bgImage");
   const preload = new Image();
   preload.onload = () => {
-    bgEl.style.backgroundImage = `url(${img})`;
+    bgEl.style.backgroundImage = `url(${url})`;
     bgEl.classList.add("loaded");
   };
-  preload.onerror = () => loadBackground(attempt + 1); // try the next image
-  preload.src = img;
+  if (onError) preload.onerror = onError;
+  preload.src = url;
+}
+
+// Built with DOM nodes (no innerHTML) for the photo credit Unsplash's API
+// guidelines require when using their photos.
+function showCredit(credit) {
+  const el = document.getElementById("photoCredit");
+  el.textContent = "";
+  if (!credit) return;
+  el.appendChild(document.createTextNode("Photo by "));
+  const author = document.createElement("a");
+  author.href = credit.link + UNSPLASH_UTM;
+  author.target = "_blank";
+  author.rel = "noopener";
+  author.textContent = credit.name;
+  el.appendChild(author);
+  el.appendChild(document.createTextNode(" / "));
+  const unsplash = document.createElement("a");
+  unsplash.href = "https://unsplash.com/" + UNSPLASH_UTM;
+  unsplash.target = "_blank";
+  unsplash.rel = "noopener";
+  unsplash.textContent = "Unsplash";
+  el.appendChild(unsplash);
+}
+
+function loadCurated(attempt = 0) {
+  showCredit(null);
+  if (attempt >= bgImages.length) return; // every image failed; keep base bg
+  const img = bgImages[(periodIndex() + attempt) % bgImages.length];
+  applyBackground(img, () => loadCurated(attempt + 1));
+}
+
+// Fetch a random landscape photo from Unsplash, cached per rotation period so
+// we don't burn the API rate limit on every new tab.
+async function fetchUnsplashPhoto() {
+  const key = get("unsplash_key");
+  if (!key) return null;
+  const period = periodIndex();
+  try {
+    const cached = JSON.parse(get("bg_cache") || "{}");
+    if (cached.period === period && cached.url) return cached;
+  } catch {}
+  try {
+    const res = await fetch(
+      `https://api.unsplash.com/photos/random?orientation=landscape&content_filter=high&query=landscape,nature,mountains&client_id=${encodeURIComponent(key)}`,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const photo = Array.isArray(data) ? data[0] : data;
+    if (!photo || !photo.urls) return null;
+    const cache = {
+      period,
+      url: `${photo.urls.raw}&w=1920&q=80&fit=crop`,
+      credit: { name: photo.user.name, link: photo.user.links.html },
+      download: photo.links.download_location,
+    };
+    set("bg_cache", JSON.stringify(cache));
+    // Unsplash API guidelines: ping the download endpoint when a photo is used
+    fetch(`${cache.download}&client_id=${encodeURIComponent(key)}`).catch(
+      () => {},
+    );
+    return cache;
+  } catch {
+    return null;
+  }
+}
+
+async function loadBackground() {
+  const photo = await fetchUnsplashPhoto();
+  if (photo && photo.url) {
+    applyBackground(photo.url, () => loadCurated());
+    showCredit(photo.credit);
+  } else {
+    loadCurated();
+  }
 }
 loadBackground();
-
-function shuffleBackground() {
-  bgNudge++;
-  loadBackground();
-}
 
 // Re-roll background + quote when the rotation period changes
 let currentPeriod = periodIndex();
@@ -404,7 +471,6 @@ setInterval(() => {
   const p = periodIndex();
   if (p !== currentPeriod) {
     currentPeriod = p;
-    bgNudge = 0;
     quoteNudge = 0;
     loadBackground();
     showQuote();
@@ -451,6 +517,7 @@ function toggleSeconds() {
 function openSettings() {
   document.getElementById("nameInput").value = get("user_name") || "";
   document.getElementById("apiKeyInput").value = get("weather_api_key") || "";
+  document.getElementById("unsplashKeyInput").value = get("unsplash_key") || "";
   document.getElementById("locationInput").value =
     get("weather_location") || "Salt Lake City";
   setUnit(get("weather_unit") || "imperial");
@@ -467,8 +534,11 @@ function closeSettings() {
 }
 
 function saveSettings() {
+  const prevUnsplashKey = get("unsplash_key") || "";
   set("user_name", document.getElementById("nameInput").value.trim());
   set("weather_api_key", document.getElementById("apiKeyInput").value.trim());
+  const unsplashKey = document.getElementById("unsplashKeyInput").value.trim();
+  set("unsplash_key", unsplashKey);
   set(
     "weather_location",
     document.getElementById("locationInput").value.trim() || "Salt Lake City",
@@ -481,6 +551,11 @@ function saveSettings() {
   updateClock();
   updateGreeting();
   fetchWeather();
+  // If the Unsplash key changed, drop the cached photo and reload the background
+  if (unsplashKey !== prevUnsplashKey) {
+    set("bg_cache", "");
+    loadBackground();
+  }
 }
 
 // ── Search ──
@@ -654,7 +729,6 @@ document.getElementById("todoList").addEventListener("click", (e) => {
   else if (action === "delete") deleteTodo(i);
 });
 
-document.getElementById("bgOverlay").addEventListener("click", shuffleBackground);
 document.getElementById("quoteDisplay").addEventListener("click", shuffleQuote);
 document.getElementById("weatherDisplay").addEventListener("click", openSettings);
 document.getElementById("settingsBtn").addEventListener("click", openSettings);

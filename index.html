@@ -77,6 +77,30 @@
         z-index: 1;
       }
 
+      /* Photo credit (shown when an Unsplash photo is loaded) */
+      .photo-credit {
+        position: fixed;
+        bottom: 0.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 5;
+        font-size: 0.55rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+        pointer-events: auto;
+        white-space: nowrap;
+      }
+      .photo-credit a {
+        color: var(--text-mid);
+        text-decoration: none;
+        transition: color 0.3s;
+      }
+      .photo-credit a:hover {
+        color: var(--text);
+      }
+
       .content {
         position: relative;
         z-index: 2;
@@ -655,11 +679,8 @@
   </head>
   <body>
     <div class="bg-image" id="bgImage"></div>
-    <div
-      class="bg-overlay"
-      id="bgOverlay"
-      title="Click for a new background"
-    ></div>
+    <div class="bg-overlay" id="bgOverlay"></div>
+    <div class="photo-credit" id="photoCredit"></div>
 
     <div class="top-bar">
       <div class="date-display" id="dateDisplay"></div>
@@ -759,6 +780,19 @@
           <div class="settings-hint">
             Free at openweathermap.org/api — takes ~2hrs to activate after
             signup
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-label">Unsplash Access Key</div>
+          <input
+            class="settings-input"
+            id="unsplashKeyInput"
+            type="text"
+            placeholder="optional — for unlimited backgrounds"
+          />
+          <div class="settings-hint">
+            Free at unsplash.com/developers — unlocks random landscape photos.
+            Leave blank to use the built-in set.
           </div>
         </div>
         <div class="settings-group">
