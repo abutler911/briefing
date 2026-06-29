@@ -128,6 +128,17 @@
       .weather-desc {
         margin-top: 2px;
       }
+      .weather-extra {
+        margin-top: 2px;
+        font-size: 0.62rem;
+        letter-spacing: 0.06em;
+        color: var(--text-mid);
+        opacity: 0.85;
+      }
+      .weather-icon {
+        font-family: "JetBrains Mono", monospace;
+        margin-right: 0.25em;
+      }
 
       /* Clock */
       .clock {
@@ -139,6 +150,26 @@
         color: var(--text);
         margin-bottom: 0.2em;
         text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+      }
+      .clock-ampm {
+        font-size: 0.28em;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-mid);
+        margin-left: 0.2em;
+        vertical-align: 0.35em;
+      }
+
+      /* Greeting */
+      .greeting {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: clamp(1rem, 2.4vw, 1.4rem);
+        letter-spacing: 0.06em;
+        color: var(--text-mid);
+        margin-bottom: 0.4rem;
+        text-align: center;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
       }
 
       /* Mantra */
@@ -297,6 +328,11 @@
         line-height: 1.5;
         color: var(--text-mid);
         text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        transition: color 0.3s;
+      }
+      .quote:hover {
+        color: var(--text);
       }
       .quote-attr {
         font-style: normal;
@@ -462,17 +498,26 @@
   </head>
   <body>
     <div class="bg-image" id="bgImage"></div>
-    <div class="bg-overlay"></div>
+    <div
+      class="bg-overlay"
+      onclick="shuffleBackground()"
+      title="Click for a new background"
+    ></div>
 
     <div class="top-bar">
       <div class="date-display" id="dateDisplay"></div>
       <div class="weather-display" id="weatherDisplay" onclick="openSettings()">
-        <div class="weather-temp" id="weatherTemp">--°</div>
+        <div class="weather-temp">
+          <span class="weather-icon" id="weatherIcon"></span
+          ><span id="weatherTemp">--°</span>
+        </div>
         <div class="weather-desc" id="weatherDesc">click to set up</div>
+        <div class="weather-extra" id="weatherExtra"></div>
       </div>
     </div>
 
     <div class="content">
+      <div class="greeting" id="greeting"></div>
       <div class="clock" id="clock"></div>
       <div class="mantra" id="mantra"></div>
 
@@ -489,7 +534,12 @@
     </div>
 
     <div class="bottom-bar">
-      <div class="quote" id="quoteDisplay"></div>
+      <div
+        class="quote"
+        id="quoteDisplay"
+        onclick="shuffleQuote()"
+        title="Click for a new quote"
+      ></div>
       <button class="settings-btn" onclick="openSettings()">settings</button>
     </div>
 
@@ -500,6 +550,37 @@
     >
       <div class="settings-panel">
         <div class="settings-title">Settings</div>
+        <div class="settings-group">
+          <div class="settings-label">Your Name</div>
+          <input
+            class="settings-input"
+            id="nameInput"
+            type="text"
+            placeholder="shown in the greeting (optional)"
+          />
+        </div>
+        <div class="settings-group">
+          <div class="settings-label">Clock Format</div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.3rem">
+            <button
+              class="btn fmt-btn"
+              data-fmt="24h"
+              onclick="setClockFormat('24h')"
+            >
+              24h
+            </button>
+            <button
+              class="btn fmt-btn"
+              data-fmt="12h"
+              onclick="setClockFormat('12h')"
+            >
+              12h
+            </button>
+            <button class="btn" id="secondsBtn" onclick="toggleSeconds()">
+              Seconds: off
+            </button>
+          </div>
+        </div>
         <div class="settings-group">
           <div class="settings-label">OpenWeatherMap API Key</div>
           <input
@@ -557,12 +638,37 @@
       // ── Clock ──
       function updateClock() {
         const now = new Date();
-        const h = String(now.getHours()).padStart(2, "0");
+        const fmt = get("clock_format") || "24h";
+        const showSeconds = get("clock_seconds") === "true";
+        let h = now.getHours();
+        let suffix = "";
+        if (fmt === "12h") {
+          suffix = h >= 12 ? "pm" : "am";
+          h = h % 12 || 12;
+        }
+        const hh = fmt === "12h" ? String(h) : String(h).padStart(2, "0");
         const m = String(now.getMinutes()).padStart(2, "0");
-        document.getElementById("clock").textContent = `${h}:${m}`;
+        let time = `${hh}:${m}`;
+        if (showSeconds) time += `:${String(now.getSeconds()).padStart(2, "0")}`;
+        document.getElementById("clock").innerHTML = suffix
+          ? `${time}<span class="clock-ampm">${suffix}</span>`
+          : time;
       }
       setInterval(updateClock, 1000);
       updateClock();
+
+      // ── Greeting ──
+      function updateGreeting() {
+        const h = new Date().getHours();
+        const phase =
+          h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+        const name = (get("user_name") || "").trim();
+        document.getElementById("greeting").textContent = name
+          ? `Good ${phase}, ${name}`
+          : `Good ${phase}`;
+      }
+      updateGreeting();
+      setInterval(updateGreeting, 60000);
 
       // ── Date ──
       function updateDate() {
@@ -599,11 +705,6 @@
       const ROTATE_HOURS = 2;
       function periodIndex() {
         return Math.floor(Date.now() / (ROTATE_HOURS * 3600000));
-      }
-
-      function periodPick(arr, offset = 0) {
-        const rng = seededRandom(periodIndex() * 31 + offset + 7);
-        return arr[Math.floor(rng() * arr.length)];
       }
 
       // ── Mantra ──
@@ -820,17 +921,39 @@
         },
       ];
 
+      // quoteNudge advances the pick on manual shuffle; resets when the period rolls over
+      let quoteNudge = 0;
       function showQuote() {
-        const quote = periodPick(quotes, 17); // offset 17 so it doesn't share a seed with other picks
+        const rng = seededRandom(periodIndex() * 31 + 17 + 7); // offset 17 so it doesn't share a seed with other picks
+        const base = Math.floor(rng() * quotes.length);
+        const quote = quotes[(base + quoteNudge) % quotes.length];
         document.getElementById("quoteDisplay").innerHTML = `
     "${quote.text}"
     <div class="quote-attr">${quote.attr}</div>
   `;
       }
 
+      function shuffleQuote() {
+        quoteNudge++;
+        showQuote();
+      }
+
       showQuote();
 
       // ── Weather ──
+      function weatherEmoji(w) {
+        const id = w.id;
+        const night = (w.icon || "").endsWith("n");
+        if (id >= 200 && id < 300) return "⛈"; // thunderstorm
+        if (id >= 300 && id < 400) return "🌦"; // drizzle
+        if (id >= 500 && id < 600) return "🌧"; // rain
+        if (id >= 600 && id < 700) return "❄"; // snow
+        if (id >= 700 && id < 800) return "🌫"; // atmosphere (mist/fog/haze)
+        if (id === 800) return night ? "🌙" : "☀"; // clear
+        if (id > 800) return "☁"; // clouds
+        return "";
+      }
+
       async function fetchWeather() {
         const apiKey = get("weather_api_key");
         const location = get("weather_location") || "Salt Lake City";
@@ -844,13 +967,21 @@
           if (!res.ok) throw new Error("Weather fetch failed");
           const data = await res.json();
           const symbol = unit === "imperial" ? "F" : "C";
+          const r = (t) => Math.round(t);
+          document.getElementById("weatherIcon").textContent = weatherEmoji(
+            data.weather[0],
+          );
           document.getElementById("weatherTemp").textContent =
-            `${Math.round(data.main.temp)}°${symbol}`;
+            `${r(data.main.temp)}°${symbol}`;
           document.getElementById("weatherDesc").textContent =
             `${data.weather[0].description} · ${location}`;
+          document.getElementById("weatherExtra").textContent =
+            `feels ${r(data.main.feels_like)}° · ↑${r(data.main.temp_max)}° ↓${r(data.main.temp_min)}°`;
         } catch (e) {
+          document.getElementById("weatherIcon").textContent = "";
           document.getElementById("weatherDesc").textContent =
             "weather unavailable";
+          document.getElementById("weatherExtra").textContent = "";
         }
       }
 
@@ -867,8 +998,10 @@
         "https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?w=1920&q=80", // valley
       ];
 
+      // bgNudge cycles to the next image on manual shuffle; resets when the period rolls over
+      let bgNudge = 0;
       function loadBackground() {
-        const img = bgImages[periodIndex() % bgImages.length];
+        const img = bgImages[(periodIndex() + bgNudge) % bgImages.length];
         const bgEl = document.getElementById("bgImage");
         const preload = new Image();
         preload.onload = () => {
@@ -879,12 +1012,19 @@
       }
       loadBackground();
 
+      function shuffleBackground() {
+        bgNudge++;
+        loadBackground();
+      }
+
       // Re-roll background + quote when the rotation period changes
       let currentPeriod = periodIndex();
       setInterval(() => {
         const p = periodIndex();
         if (p !== currentPeriod) {
           currentPeriod = p;
+          bgNudge = 0;
+          quoteNudge = 0;
           loadBackground();
           showQuote();
         }
@@ -892,6 +1032,8 @@
 
       // ── Settings ──
       let selectedUnit = get("weather_unit") || "imperial";
+      let selectedClockFormat = get("clock_format") || "24h";
+      let selectedSeconds = get("clock_seconds") === "true";
 
       function setUnit(u) {
         selectedUnit = u;
@@ -902,12 +1044,32 @@
         });
       }
 
+      function setClockFormat(f) {
+        selectedClockFormat = f;
+        document.querySelectorAll(".fmt-btn").forEach((btn) => {
+          btn.style.borderColor =
+            btn.dataset.fmt === f ? "var(--crimson)" : "";
+          btn.style.color = btn.dataset.fmt === f ? "var(--text)" : "";
+        });
+      }
+
+      function toggleSeconds() {
+        selectedSeconds = !selectedSeconds;
+        document.getElementById("secondsBtn").textContent =
+          `Seconds: ${selectedSeconds ? "on" : "off"}`;
+      }
+
       function openSettings() {
+        document.getElementById("nameInput").value = get("user_name") || "";
         document.getElementById("apiKeyInput").value =
           get("weather_api_key") || "";
         document.getElementById("locationInput").value =
           get("weather_location") || "Salt Lake City";
         setUnit(get("weather_unit") || "imperial");
+        setClockFormat(get("clock_format") || "24h");
+        selectedSeconds = get("clock_seconds") === "true";
+        document.getElementById("secondsBtn").textContent =
+          `Seconds: ${selectedSeconds ? "on" : "off"}`;
         document.getElementById("settingsOverlay").classList.add("open");
       }
 
@@ -921,6 +1083,7 @@
       }
 
       function saveSettings() {
+        set("user_name", document.getElementById("nameInput").value.trim());
         set(
           "weather_api_key",
           document.getElementById("apiKeyInput").value.trim(),
@@ -931,7 +1094,11 @@
             "Salt Lake City",
         );
         set("weather_unit", selectedUnit);
+        set("clock_format", selectedClockFormat);
+        set("clock_seconds", selectedSeconds);
         closeSettings();
+        updateClock();
+        updateGreeting();
         fetchWeather();
       }
     </script>
