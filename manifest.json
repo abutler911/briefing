@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Briefing",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A calm new-tab dashboard with clock, weather, todos, and a daily quote.",
   "browser_specific_settings": {
     "gecko": {
