@@ -71,10 +71,19 @@ function dailyPick(arr, offset = 0) {
 }
 
 // ── Time-based rotation (background + quote) ──
-const ROTATE_HOURS = 2;
-function periodIndex() {
-  return Math.floor(Date.now() / (ROTATE_HOURS * 3600000));
+function rotateHours() {
+  return Number(get("rotate_hours")) || 2;
 }
+function periodIndex() {
+  return Math.floor(Date.now() / (rotateHours() * 3600000));
+}
+
+// ── Accent color ──
+function applyAccent() {
+  const accent = get("accent");
+  if (accent) document.documentElement.style.setProperty("--crimson", accent);
+}
+applyAccent();
 
 // ── Mantra ──
 const mantras = [
@@ -429,9 +438,10 @@ async function fetchUnsplashPhoto() {
     const cached = JSON.parse(get("bg_cache") || "{}");
     if (cached.period === period && cached.url) return cached;
   } catch {}
+  const query = (get("bg_query") || "landscape,nature,mountains").trim();
   try {
     const res = await fetch(
-      `https://api.unsplash.com/photos/random?orientation=landscape&content_filter=high&query=landscape,nature,mountains&client_id=${encodeURIComponent(key)}`,
+      `https://api.unsplash.com/photos/random?orientation=landscape&content_filter=high&query=${encodeURIComponent(query)}&client_id=${encodeURIComponent(key)}`,
     );
     if (!res.ok) return null;
     const data = await res.json();
@@ -482,6 +492,28 @@ let selectedUnit = get("weather_unit") || "imperial";
 let selectedClockFormat = get("clock_format") || "24h";
 let selectedSeconds = get("clock_seconds") === "true";
 let selectedEngine = get("search_engine") || "google";
+let selectedAccent = get("accent") || "#c23c3c";
+let selectedCadence = get("rotate_hours") || "2";
+
+function setAccent(color) {
+  selectedAccent = color;
+  document.querySelectorAll(".accent-swatch").forEach((s) => {
+    s.classList.toggle(
+      "selected",
+      s.dataset.color.toLowerCase() === color.toLowerCase(),
+    );
+  });
+  document.getElementById("accentCustom").value = color;
+}
+
+function setCadence(hours) {
+  selectedCadence = String(hours);
+  document.querySelectorAll(".cadence-btn").forEach((btn) => {
+    const on = btn.dataset.hours === selectedCadence;
+    btn.style.borderColor = on ? "var(--crimson)" : "";
+    btn.style.color = on ? "var(--text)" : "";
+  });
+}
 
 function setSearchEngine(engine) {
   selectedEngine = engine;
@@ -520,9 +552,12 @@ function openSettings() {
   document.getElementById("unsplashKeyInput").value = get("unsplash_key") || "";
   document.getElementById("locationInput").value =
     get("weather_location") || "Salt Lake City";
+  document.getElementById("bgQueryInput").value = get("bg_query") || "";
   setUnit(get("weather_unit") || "imperial");
   setClockFormat(get("clock_format") || "24h");
   setSearchEngine(get("search_engine") || "google");
+  setAccent(get("accent") || "#c23c3c");
+  setCadence(get("rotate_hours") || "2");
   selectedSeconds = get("clock_seconds") === "true";
   document.getElementById("secondsBtn").textContent =
     `Seconds: ${selectedSeconds ? "on" : "off"}`;
@@ -535,10 +570,14 @@ function closeSettings() {
 
 function saveSettings() {
   const prevUnsplashKey = get("unsplash_key") || "";
+  const prevQuery = get("bg_query") || "";
+  const prevCadence = get("rotate_hours") || "2";
   set("user_name", document.getElementById("nameInput").value.trim());
   set("weather_api_key", document.getElementById("apiKeyInput").value.trim());
   const unsplashKey = document.getElementById("unsplashKeyInput").value.trim();
   set("unsplash_key", unsplashKey);
+  const bgQuery = document.getElementById("bgQueryInput").value.trim();
+  set("bg_query", bgQuery);
   set(
     "weather_location",
     document.getElementById("locationInput").value.trim() || "Salt Lake City",
@@ -547,14 +586,26 @@ function saveSettings() {
   set("clock_format", selectedClockFormat);
   set("clock_seconds", selectedSeconds);
   set("search_engine", selectedEngine);
+  set("accent", selectedAccent);
+  set("rotate_hours", selectedCadence);
   closeSettings();
+  applyAccent();
   updateClock();
   updateGreeting();
   fetchWeather();
-  // If the Unsplash key changed, drop the cached photo and reload the background
-  if (unsplashKey !== prevUnsplashKey) {
+  // Reload the background if anything affecting it changed.
+  if (
+    unsplashKey !== prevUnsplashKey ||
+    bgQuery !== prevQuery ||
+    selectedCadence !== prevCadence
+  ) {
     set("bg_cache", "");
     loadBackground();
+  }
+  // Cadence affects the quote rotation too; re-pick for the new period.
+  if (selectedCadence !== prevCadence) {
+    currentPeriod = periodIndex();
+    showQuote();
   }
 }
 
@@ -752,6 +803,19 @@ document
   .querySelectorAll(".engine-btn")
   .forEach((btn) =>
     btn.addEventListener("click", () => setSearchEngine(btn.dataset.engine)),
+  );
+document
+  .querySelectorAll(".accent-swatch")
+  .forEach((btn) =>
+    btn.addEventListener("click", () => setAccent(btn.dataset.color)),
+  );
+document
+  .getElementById("accentCustom")
+  .addEventListener("input", (e) => setAccent(e.target.value));
+document
+  .querySelectorAll(".cadence-btn")
+  .forEach((btn) =>
+    btn.addEventListener("click", () => setCadence(btn.dataset.hours)),
   );
 document.getElementById("secondsBtn").addEventListener("click", toggleSeconds);
 document.getElementById("cancelBtn").addEventListener("click", closeSettings);
