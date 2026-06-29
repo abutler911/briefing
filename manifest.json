@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "Briefing",
+  "version": "1.0.0",
+  "description": "A calm new-tab dashboard with clock, weather, todos, and a daily quote.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "briefing@abutler911",
+      "strict_min_version": "115.0"
+    }
+  },
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  }
+}
