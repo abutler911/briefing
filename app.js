@@ -117,72 +117,64 @@ const mantras = [
 const mantraEl = document.getElementById("mantra");
 mantraEl.textContent = dailyPick(mantras, 0);
 
-// ── Todos ──
-function getTodos() {
+// ── Daily focus ──
+// First view of the day asks for the day's focus; after that it's shown as a
+// statement. Stored per day, so it re-prompts each new day.
+function getFocusText() {
+  const today = new Date().toDateString();
   try {
-    const today = new Date().toDateString();
-    const stored = JSON.parse(get("todos") || "{}");
-    if (stored.date !== today) {
-      // Keep undone tasks, clear done ones for new day
-      const carried = (stored.items || []).filter((t) => !t.done);
-      return { date: today, items: carried };
-    }
-    return stored;
+    const stored = JSON.parse(get("focus") || "{}");
+    return stored.date === today ? stored.text || "" : "";
   } catch {
-    return { date: new Date().toDateString(), items: [] };
+    return "";
   }
 }
 
-function saveTodos(data) {
-  set("todos", JSON.stringify(data));
+function saveFocusText(text) {
+  set("focus", JSON.stringify({ date: new Date().toDateString(), text }));
 }
 
-function renderTodos() {
-  const data = getTodos();
-  const list = document.getElementById("todoList");
-  list.innerHTML = "";
-  data.items.forEach((todo, i) => {
-    const li = document.createElement("li");
-    li.className = `todo-item${todo.done ? " done" : ""}`;
-    li.dataset.index = i;
-    li.innerHTML = `
-      <div class="todo-check${todo.done ? " done" : ""}" data-action="toggle"></div>
-      <span class="todo-text">${escHtml(todo.text)}</span>
-      <button class="todo-delete" data-action="delete">×</button>
-    `;
-    list.appendChild(li);
-  });
+function renderFocus() {
+  const name = (get("user_name") || "").trim();
+  const text = getFocusText();
+  const promptEl = document.getElementById("focusPrompt");
+  const answerEl = document.getElementById("focusAnswer");
+
+  if (text) {
+    promptEl.hidden = true;
+    answerEl.hidden = false;
+    // Built with DOM nodes so the focus text can't inject markup.
+    answerEl.textContent = name
+      ? `${name}, today you are focused on `
+      : "Today you are focused on ";
+    const task = document.createElement("span");
+    task.className = "focus-task";
+    task.textContent = text;
+    answerEl.appendChild(task);
+    answerEl.appendChild(document.createTextNode("."));
+  } else {
+    answerEl.hidden = true;
+    promptEl.hidden = false;
+    document.getElementById("focusQuestion").textContent = name
+      ? `${name}, what is your main focus for the day?`
+      : "What is your main focus for the day?";
+    document.getElementById("focusEntry").value = "";
+  }
 }
 
-function addTodo(text) {
-  if (!text.trim()) return;
-  const data = getTodos();
-  data.items.push({ text: text.trim(), done: false });
-  saveTodos(data);
-  renderTodos();
+function editFocus() {
+  const name = (get("user_name") || "").trim();
+  document.getElementById("focusAnswer").hidden = true;
+  document.getElementById("focusPrompt").hidden = false;
+  document.getElementById("focusQuestion").textContent = name
+    ? `${name}, what is your main focus for the day?`
+    : "What is your main focus for the day?";
+  const entry = document.getElementById("focusEntry");
+  entry.value = getFocusText();
+  entry.focus();
 }
 
-function toggleTodo(i) {
-  const data = getTodos();
-  data.items[i].done = !data.items[i].done;
-  saveTodos(data);
-  renderTodos();
-}
-
-function deleteTodo(i) {
-  const data = getTodos();
-  data.items.splice(i, 1);
-  saveTodos(data);
-  renderTodos();
-}
-
-function escHtml(s) {
-  const d = document.createElement("div");
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-renderTodos();
+renderFocus();
 
 // ── Quotes ──
 const quotes = [
@@ -592,6 +584,7 @@ function saveSettings() {
   applyAccent();
   updateClock();
   updateGreeting();
+  renderFocus();
   fetchWeather();
   // Reload the background if anything affecting it changed.
   if (
@@ -623,23 +616,6 @@ function runSearch(query) {
   const base = SEARCH_ENGINES[engine] || SEARCH_ENGINES.google;
   window.location.href = base + encodeURIComponent(q);
 }
-
-// ── Main focus ──
-function loadFocus() {
-  const today = new Date().toDateString();
-  let f = {};
-  try {
-    f = JSON.parse(get("focus") || "{}");
-  } catch {}
-  document.getElementById("focusInput").value =
-    f.date === today ? f.text || "" : "";
-}
-
-function saveFocus(text) {
-  set("focus", JSON.stringify({ date: new Date().toDateString(), text }));
-}
-
-loadFocus();
 
 // ── Quick links ──
 function getLinks() {
@@ -747,9 +723,16 @@ document.getElementById("searchForm").addEventListener("submit", (e) => {
   runSearch(document.getElementById("searchInput").value);
 });
 
-document.getElementById("focusInput").addEventListener("input", (e) => {
-  saveFocus(e.target.value);
+document.getElementById("focusEntry").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const text = e.target.value.trim();
+    if (!text) return;
+    saveFocusText(text);
+    renderFocus();
+  }
 });
+
+document.getElementById("focusAnswer").addEventListener("click", editFocus);
 
 document.getElementById("quickLinks").addEventListener("click", (e) => {
   if (e.target.id === "qlAdd") {
@@ -762,22 +745,6 @@ document.getElementById("quickLinks").addEventListener("click", (e) => {
     e.preventDefault();
     deleteLink(Number(del.dataset.index));
   }
-});
-
-document.getElementById("todoAdd").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    addTodo(e.target.value);
-    e.target.value = "";
-  }
-});
-
-document.getElementById("todoList").addEventListener("click", (e) => {
-  const li = e.target.closest(".todo-item");
-  if (!li) return;
-  const i = Number(li.dataset.index);
-  const action = e.target.dataset.action;
-  if (action === "toggle") toggleTodo(i);
-  else if (action === "delete") deleteTodo(i);
 });
 
 document.getElementById("quoteDisplay").addEventListener("click", shuffleQuote);

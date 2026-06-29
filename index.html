@@ -254,26 +254,66 @@
         background: rgba(255, 255, 255, 0.11);
       }
 
-      /* Main focus */
-      .focus-input {
+      /* Daily focus */
+      .focus-card {
         width: 100%;
-        background: none;
-        border: none;
-        border-bottom: 1px solid var(--border);
-        color: var(--amber);
+        max-width: 460px;
+        text-align: center;
+      }
+      .focus-question {
+        font-family: "Cormorant Garamond", serif;
+        font-style: italic;
+        font-size: clamp(1.1rem, 2.6vw, 1.5rem);
+        color: var(--text-mid);
+        margin-bottom: 0.9rem;
+        text-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.55),
+          0 2px 16px rgba(0, 0, 0, 0.4);
+      }
+      .focus-entry {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(18px) saturate(130%);
+        -webkit-backdrop-filter: blur(18px) saturate(130%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        color: var(--text);
         font:
           400 1rem "Cormorant Garamond",
           serif;
-        font-style: italic;
+        padding: 0.7rem 1.4rem;
         text-align: center;
-        padding: 0.2rem 0 0.7rem;
-        margin-bottom: 0.7rem;
         outline: none;
+        transition: border-color 0.3s;
       }
-      .focus-input::placeholder {
+      .focus-entry::placeholder {
         color: var(--text-dim);
-        font-style: normal;
-        opacity: 0.7;
+        opacity: 0.8;
+      }
+      .focus-entry:focus {
+        border-color: var(--crimson);
+      }
+      .focus-answer {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: clamp(1.3rem, 3.2vw, 2rem);
+        line-height: 1.4;
+        color: var(--text-mid);
+        cursor: pointer;
+        text-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.6),
+          0 2px 18px rgba(0, 0, 0, 0.45);
+        transition: color 0.3s;
+      }
+      .focus-answer:hover {
+        color: var(--text);
+      }
+      .focus-answer .focus-task {
+        color: var(--amber);
+        font-style: italic;
+      }
+      [hidden] {
+        display: none !important;
       }
 
       /* Quick links */
@@ -361,129 +401,6 @@
       }
       .ql-add:hover {
         border-color: var(--text-mid);
-        color: var(--text);
-      }
-
-      /* Todo section */
-      .todo-section {
-        width: 100%;
-        max-width: 380px;
-        background: rgba(255, 255, 255, 0.06);
-        backdrop-filter: blur(18px) saturate(130%);
-        -webkit-backdrop-filter: blur(18px) saturate(130%);
-        border-radius: 10px;
-        padding: 1.2rem 1.4rem;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-      }
-
-      .todo-label {
-        font-size: 0.6rem;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-        color: var(--text-dim);
-        margin-bottom: 0.6rem;
-        text-align: center;
-      }
-
-      .todo-list {
-        list-style: none;
-      }
-      .todo-item {
-        display: flex;
-        align-items: center;
-        gap: 0.7rem;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid var(--border);
-        font-size: 0.85rem;
-        font-weight: 300;
-        color: var(--text-mid);
-        transition: color 0.3s;
-      }
-      .todo-item:hover {
-        color: var(--text);
-      }
-
-      .todo-check {
-        width: 14px;
-        height: 14px;
-        border: 1px solid var(--text-dim);
-        border-radius: 2px;
-        cursor: pointer;
-        flex-shrink: 0;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .todo-check:hover {
-        border-color: var(--crimson);
-      }
-      .todo-check.done {
-        border-color: var(--crimson);
-        background: var(--crimson);
-      }
-      .todo-check.done::after {
-        content: "✓";
-        color: var(--bg);
-        font-size: 10px;
-      }
-      .todo-item.done .todo-text {
-        text-decoration: line-through;
-        color: var(--text-dim);
-        opacity: 0.5;
-      }
-
-      .todo-text {
-        flex: 1;
-        background: none;
-        border: none;
-        color: inherit;
-        font: inherit;
-        outline: none;
-      }
-
-      .todo-delete {
-        opacity: 0;
-        background: none;
-        border: none;
-        color: var(--text-dim);
-        cursor: pointer;
-        font-size: 1rem;
-        padding: 0 0.2rem;
-        transition:
-          opacity 0.2s,
-          color 0.2s;
-      }
-      .todo-item:hover .todo-delete {
-        opacity: 1;
-      }
-      .todo-delete:hover {
-        color: var(--crimson);
-      }
-
-      .todo-add {
-        width: 100%;
-        background: none;
-        border: none;
-        border-bottom: 1px solid var(--border);
-        color: var(--text-dim);
-        font:
-          300 0.85rem "JetBrains Mono",
-          monospace;
-        padding: 0.6rem 0;
-        padding-left: calc(14px + 0.7rem);
-        outline: none;
-        transition:
-          border-color 0.3s,
-          color 0.3s;
-      }
-      .todo-add::placeholder {
-        color: var(--text-dim);
-        opacity: 0.5;
-      }
-      .todo-add:focus {
-        border-color: var(--crimson);
         color: var(--text);
       }
 
@@ -762,21 +679,23 @@
         />
       </form>
 
-      <div class="todo-section">
-        <div class="todo-label">Today</div>
-        <input
-          class="focus-input"
-          id="focusInput"
-          type="text"
-          placeholder="◆ set your main focus"
-        />
-        <ul class="todo-list" id="todoList"></ul>
-        <input
-          class="todo-add"
-          id="todoAdd"
-          type="text"
-          placeholder="+ add a task"
-        />
+      <div class="focus-card" id="focusCard">
+        <div class="focus-prompt" id="focusPrompt">
+          <div class="focus-question" id="focusQuestion"></div>
+          <input
+            class="focus-entry"
+            id="focusEntry"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <div
+          class="focus-answer"
+          id="focusAnswer"
+          title="Click to change your focus"
+          hidden
+        ></div>
       </div>
 
       <div class="quick-links" id="quickLinks"></div>

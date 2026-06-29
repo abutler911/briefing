@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "Briefing",
-  "version": "1.3.0",
-  "description": "A calm new-tab dashboard with clock, weather, todos, and a daily quote.",
+  "version": "1.4.0",
+  "description": "A calm new-tab dashboard with clock, weather, a daily focus, and a quote.",
   "browser_specific_settings": {
     "gecko": {
       "id": "briefing@abutler911",
