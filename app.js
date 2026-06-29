@@ -415,6 +415,16 @@ setInterval(() => {
 let selectedUnit = get("weather_unit") || "imperial";
 let selectedClockFormat = get("clock_format") || "24h";
 let selectedSeconds = get("clock_seconds") === "true";
+let selectedEngine = get("search_engine") || "google";
+
+function setSearchEngine(engine) {
+  selectedEngine = engine;
+  document.querySelectorAll(".engine-btn").forEach((btn) => {
+    const on = btn.dataset.engine === engine;
+    btn.style.borderColor = on ? "var(--crimson)" : "";
+    btn.style.color = on ? "var(--text)" : "";
+  });
+}
 
 function setUnit(u) {
   selectedUnit = u;
@@ -445,6 +455,7 @@ function openSettings() {
     get("weather_location") || "Salt Lake City";
   setUnit(get("weather_unit") || "imperial");
   setClockFormat(get("clock_format") || "24h");
+  setSearchEngine(get("search_engine") || "google");
   selectedSeconds = get("clock_seconds") === "true";
   document.getElementById("secondsBtn").textContent =
     `Seconds: ${selectedSeconds ? "on" : "off"}`;
@@ -465,15 +476,168 @@ function saveSettings() {
   set("weather_unit", selectedUnit);
   set("clock_format", selectedClockFormat);
   set("clock_seconds", selectedSeconds);
+  set("search_engine", selectedEngine);
   closeSettings();
   updateClock();
   updateGreeting();
   fetchWeather();
 }
 
+// ── Search ──
+const SEARCH_ENGINES = {
+  google: "https://www.google.com/search?q=",
+  duckduckgo: "https://duckduckgo.com/?q=",
+  bing: "https://www.bing.com/search?q=",
+};
+
+function runSearch(query) {
+  const q = query.trim();
+  if (!q) return;
+  const engine = get("search_engine") || "google";
+  const base = SEARCH_ENGINES[engine] || SEARCH_ENGINES.google;
+  window.location.href = base + encodeURIComponent(q);
+}
+
+// ── Main focus ──
+function loadFocus() {
+  const today = new Date().toDateString();
+  let f = {};
+  try {
+    f = JSON.parse(get("focus") || "{}");
+  } catch {}
+  document.getElementById("focusInput").value =
+    f.date === today ? f.text || "" : "";
+}
+
+function saveFocus(text) {
+  set("focus", JSON.stringify({ date: new Date().toDateString(), text }));
+}
+
+loadFocus();
+
+// ── Quick links ──
+function getLinks() {
+  try {
+    return JSON.parse(get("links") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveLinks(links) {
+  set("links", JSON.stringify(links));
+}
+
+function faviconFor(url) {
+  try {
+    const host = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
+  } catch {
+    return "";
+  }
+}
+
+function labelFor(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function normalizeUrl(raw) {
+  const v = raw.trim();
+  if (!v) return "";
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
+
+// Built with DOM nodes (not innerHTML) so user-provided URLs/labels can't
+// inject markup and to keep the AMO validator happy.
+function renderLinks() {
+  const el = document.getElementById("quickLinks");
+  el.textContent = "";
+  const links = getLinks();
+  links.forEach((link, i) => {
+    const tile = document.createElement("a");
+    tile.className = "ql-tile";
+    tile.href = link.url;
+    tile.title = link.label || link.url;
+
+    const img = document.createElement("img");
+    img.className = "ql-icon";
+    img.alt = "";
+    img.src = faviconFor(link.url);
+    tile.appendChild(img);
+
+    const label = document.createElement("span");
+    label.className = "ql-label";
+    label.textContent = link.label || labelFor(link.url);
+    tile.appendChild(label);
+
+    const del = document.createElement("button");
+    del.className = "ql-del";
+    del.dataset.index = i;
+    del.title = "Remove";
+    del.textContent = "×";
+    tile.appendChild(del);
+
+    el.appendChild(tile);
+  });
+
+  const add = document.createElement("button");
+  add.className = "ql-add";
+  add.id = "qlAdd";
+  add.title = "Add a quick link";
+  add.textContent = "+";
+  el.appendChild(add);
+}
+
+function addLink() {
+  const raw = window.prompt("Quick link URL (e.g. github.com):");
+  if (raw === null) return;
+  const url = normalizeUrl(raw);
+  if (!url) return;
+  const name = (window.prompt("Label (optional):", labelFor(url)) || "").trim();
+  const links = getLinks();
+  links.push({ url, label: name || labelFor(url) });
+  saveLinks(links);
+  renderLinks();
+}
+
+function deleteLink(i) {
+  const links = getLinks();
+  links.splice(i, 1);
+  saveLinks(links);
+  renderLinks();
+}
+
+renderLinks();
+
 // ── Event wiring ──
 // Extension pages run under a strict CSP (script-src 'self'), so inline
 // onclick handlers are blocked. Everything is wired up here instead.
+document.getElementById("searchForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  runSearch(document.getElementById("searchInput").value);
+});
+
+document.getElementById("focusInput").addEventListener("input", (e) => {
+  saveFocus(e.target.value);
+});
+
+document.getElementById("quickLinks").addEventListener("click", (e) => {
+  if (e.target.id === "qlAdd") {
+    e.preventDefault();
+    addLink();
+    return;
+  }
+  const del = e.target.closest(".ql-del");
+  if (del) {
+    e.preventDefault();
+    deleteLink(Number(del.dataset.index));
+  }
+});
+
 document.getElementById("todoAdd").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     addTodo(e.target.value);
@@ -509,6 +673,11 @@ document
   .querySelectorAll(".fmt-btn")
   .forEach((btn) =>
     btn.addEventListener("click", () => setClockFormat(btn.dataset.fmt)),
+  );
+document
+  .querySelectorAll(".engine-btn")
+  .forEach((btn) =>
+    btn.addEventListener("click", () => setSearchEngine(btn.dataset.engine)),
   );
 document.getElementById("secondsBtn").addEventListener("click", toggleSeconds);
 document.getElementById("cancelBtn").addEventListener("click", closeSettings);
