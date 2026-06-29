@@ -595,6 +595,17 @@
         return arr[Math.floor(rng() * arr.length)];
       }
 
+      // ── Time-based rotation (background + quote) ──
+      const ROTATE_HOURS = 2;
+      function periodIndex() {
+        return Math.floor(Date.now() / (ROTATE_HOURS * 3600000));
+      }
+
+      function periodPick(arr, offset = 0) {
+        const rng = seededRandom(periodIndex() * 31 + offset + 7);
+        return arr[Math.floor(rng() * arr.length)];
+      }
+
       // ── Mantra ──
       const mantras = [
         "Breathe.",
@@ -809,12 +820,11 @@
         },
       ];
 
-      const dailyQuote = dailyPick(quotes, 17); // offset 17 so mantra and quote don't share a seed
-
       function showQuote() {
+        const quote = periodPick(quotes, 17); // offset 17 so it doesn't share a seed with other picks
         document.getElementById("quoteDisplay").innerHTML = `
-    "${dailyQuote.text}"
-    <div class="quote-attr">${dailyQuote.attr}</div>
+    "${quote.text}"
+    <div class="quote-attr">${quote.attr}</div>
   `;
       }
 
@@ -858,10 +868,7 @@
       ];
 
       function loadBackground() {
-        const dayOfYear = Math.floor(
-          (Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000,
-        );
-        const img = bgImages[dayOfYear % bgImages.length];
+        const img = bgImages[periodIndex() % bgImages.length];
         const bgEl = document.getElementById("bgImage");
         const preload = new Image();
         preload.onload = () => {
@@ -871,6 +878,17 @@
         preload.src = img;
       }
       loadBackground();
+
+      // Re-roll background + quote when the rotation period changes
+      let currentPeriod = periodIndex();
+      setInterval(() => {
+        const p = periodIndex();
+        if (p !== currentPeriod) {
+          currentPeriod = p;
+          loadBackground();
+          showQuote();
+        }
+      }, 60000);
 
       // ── Settings ──
       let selectedUnit = get("weather_unit") || "imperial";
