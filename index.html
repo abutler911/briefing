@@ -18,7 +18,7 @@
       }
 
       :root {
-        --bg: #0a0a0c;
+        --bg: #16161c;
         --surface: rgba(255, 255, 255, 0.04);
         --surface-hover: rgba(255, 255, 255, 0.08);
         --text: #f2efea;
@@ -50,11 +50,12 @@
         background-size: cover;
         background-position: center;
         opacity: 0;
+        filter: brightness(1.45) saturate(1.08);
         transition: opacity 1.5s ease;
         z-index: 0;
       }
       .bg-image.loaded {
-        opacity: 0.8;
+        opacity: 1;
       }
 
       .bg-overlay {
@@ -63,14 +64,14 @@
         background:
           radial-gradient(
             ellipse at center,
-            rgba(10, 10, 12, 0.04) 0%,
-            rgba(10, 10, 12, 0.3) 80%
+            rgba(10, 10, 12, 0) 0%,
+            rgba(10, 10, 12, 0.18) 85%
           ),
           linear-gradient(
             to bottom,
-            rgba(10, 10, 12, 0.15) 0%,
-            rgba(10, 10, 12, 0) 40%,
-            rgba(10, 10, 12, 0.22) 100%
+            rgba(10, 10, 12, 0.1) 0%,
+            rgba(10, 10, 12, 0) 45%,
+            rgba(10, 10, 12, 0.14) 100%
           );
         z-index: 1;
       }
@@ -956,6 +957,12 @@
         return "";
       }
 
+      function setWeatherError(msg) {
+        document.getElementById("weatherIcon").textContent = "";
+        document.getElementById("weatherDesc").textContent = msg;
+        document.getElementById("weatherExtra").textContent = "";
+      }
+
       async function fetchWeather() {
         const apiKey = get("weather_api_key");
         const location = get("weather_location") || "Salt Lake City";
@@ -966,8 +973,21 @@
           const res = await fetch(
             `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&appid=${apiKey}&units=${unit}`,
           );
-          if (!res.ok) throw new Error("Weather fetch failed");
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            // OWM returns a JSON { cod, message } even on errors
+            if (res.status === 401)
+              setWeatherError("key not active yet · can take ~2 hrs");
+            else if (res.status === 404)
+              setWeatherError("location not found · check settings");
+            else if (res.status === 429)
+              setWeatherError("rate limited · try again later");
+            else
+              setWeatherError(
+                data.message ? data.message.toLowerCase() : "weather unavailable",
+              );
+            return;
+          }
           const symbol = unit === "imperial" ? "F" : "C";
           const r = (t) => Math.round(t);
           document.getElementById("weatherIcon").textContent = weatherEmoji(
@@ -980,10 +1000,7 @@
           document.getElementById("weatherExtra").textContent =
             `feels ${r(data.main.feels_like)}° · ↑${r(data.main.temp_max)}° ↓${r(data.main.temp_min)}°`;
         } catch (e) {
-          document.getElementById("weatherIcon").textContent = "";
-          document.getElementById("weatherDesc").textContent =
-            "weather unavailable";
-          document.getElementById("weatherExtra").textContent = "";
+          setWeatherError("weather unavailable · network error");
         }
       }
 
@@ -1002,14 +1019,16 @@
 
       // bgNudge cycles to the next image on manual shuffle; resets when the period rolls over
       let bgNudge = 0;
-      function loadBackground() {
-        const img = bgImages[(periodIndex() + bgNudge) % bgImages.length];
+      function loadBackground(attempt = 0) {
+        if (attempt >= bgImages.length) return; // every image failed; keep base bg
+        const img = bgImages[(periodIndex() + bgNudge + attempt) % bgImages.length];
         const bgEl = document.getElementById("bgImage");
         const preload = new Image();
         preload.onload = () => {
           bgEl.style.backgroundImage = `url(${img})`;
           bgEl.classList.add("loaded");
         };
+        preload.onerror = () => loadBackground(attempt + 1); // try the next image
         preload.src = img;
       }
       loadBackground();
