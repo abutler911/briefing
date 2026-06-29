@@ -41,7 +41,7 @@ The repo ships a `manifest.json` that overrides the browser's new-tab page with 
 
 ## Stack
 
-Single HTML file. No build step. Vanilla JS, localStorage, Google Fonts (Inter + Cormorant Garamond + JetBrains Mono).
+`index.html` + `app.js` (kept separate so the page works as a browser extension, where inline scripts are blocked by CSP). No build step. Vanilla JS, localStorage, Google Fonts (Inter + Cormorant Garamond + JetBrains Mono).
 
 **Planned**: React/Vite refactor, Supabase persistence, Netlify deployment at `briefing.andrewfbutler.com`, integration with other apps (Where's Andy, Devoured, ScaleUp).
 
