@@ -39,9 +39,19 @@ The repo ships a `manifest.json` that overrides the browser's new-tab page with 
 
 > Firefox honors the same `chrome_url_overrides.newtab` key Chrome uses, so the one manifest works for both. In **Chrome/Edge/Brave**: `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select this folder.
 
+### Mobile (PWA / add to home screen)
+
+Firefox for Android does **not** support the new-tab override, so the extension can't replace the new tab on mobile. Instead, Briefing ships as an installable PWA (`manifest.webmanifest` + `sw.js` service worker):
+
+1. Open the deployed site in mobile Firefox (or any browser).
+2. Menu → **Add to Home screen** / **Install**.
+3. Launch the icon — it opens standalone (no browser chrome) and works offline after the first load.
+
+The PWA pieces are ignored by the desktop extension (the service worker only registers on an `http(s)` origin), so the same files serve both.
+
 ## Stack
 
-`index.html` + `app.js` (kept separate so the page works as a browser extension, where inline scripts are blocked by CSP). No build step. Vanilla JS, localStorage, Google Fonts (Inter + Cormorant Garamond + JetBrains Mono).
+`index.html` + `app.js` (kept separate so the page works as a browser extension, where inline scripts are blocked by CSP) + `sw.js` (PWA offline cache). No build step. Vanilla JS, localStorage, Google Fonts (Inter + Cormorant Garamond + JetBrains Mono).
 
 **Planned**: React/Vite refactor, Supabase persistence, Netlify deployment at `briefing.andrewfbutler.com`, integration with other apps (Where's Andy, Devoured, ScaleUp).
 

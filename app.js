@@ -3,6 +3,15 @@ const LS = (key) => `newtab_${key}`;
 const get = (key) => localStorage.getItem(LS(key));
 const set = (key, val) => localStorage.setItem(LS(key), val);
 
+// ── PWA service worker ──
+// Only on a real http(s) origin (the deployed site / installed PWA). Skipped in
+// the browser extension (moz-extension:) and local file:// previews.
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+
 // ── Clock ──
 function updateClock() {
   const now = new Date();
