@@ -54,7 +54,7 @@
         z-index: 0;
       }
       .bg-image.loaded {
-        opacity: 0.55;
+        opacity: 0.7;
       }
 
       .bg-overlay {
@@ -63,14 +63,14 @@
         background:
           radial-gradient(
             ellipse at center,
-            rgba(10, 10, 12, 0.2) 0%,
-            rgba(10, 10, 12, 0.75) 80%
+            rgba(10, 10, 12, 0.1) 0%,
+            rgba(10, 10, 12, 0.45) 80%
           ),
           linear-gradient(
             to bottom,
-            rgba(10, 10, 12, 0.4) 0%,
-            rgba(10, 10, 12, 0.15) 40%,
-            rgba(10, 10, 12, 0.5) 100%
+            rgba(10, 10, 12, 0.25) 0%,
+            rgba(10, 10, 12, 0.05) 40%,
+            rgba(10, 10, 12, 0.3) 100%
           );
         z-index: 1;
       }
@@ -98,30 +98,32 @@
         justify-content: space-between;
         align-items: flex-start;
         padding: 1.5rem 2rem;
-        font-size: 0.7rem;
+        font-size: 0.85rem;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: var(--text-dim);
+        color: var(--text-mid);
+        text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
       }
 
       .date-display {
-        color: var(--text-mid);
+        color: var(--text);
       }
       .weather-display {
         text-align: right;
         cursor: pointer;
         transition: color 0.3s;
+        color: var(--text);
       }
       .weather-display:hover {
         color: var(--text);
       }
       .weather-temp {
-        font-size: 1.4rem;
+        font-size: 1.8rem;
         font-family: "Cormorant Garamond", serif;
         font-weight: 300;
         letter-spacing: 0;
         text-transform: none;
-        color: var(--text-mid);
+        color: var(--text);
       }
       .weather-desc {
         margin-top: 2px;
@@ -289,22 +291,22 @@
       .quote {
         max-width: 360px;
         font-family: "Cormorant Garamond", serif;
-        font-size: 0.85rem;
+        font-size: 1.05rem;
         font-style: italic;
         font-weight: 300;
         line-height: 1.5;
-        color: var(--text-dim);
-        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+        color: var(--text-mid);
+        text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
       }
       .quote-attr {
         font-style: normal;
         font-family: "JetBrains Mono", monospace;
-        font-size: 0.55rem;
+        font-size: 0.65rem;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         margin-top: 0.3rem;
-        color: var(--text-dim);
-        opacity: 0.6;
+        color: var(--text-mid);
+        opacity: 0.85;
       }
 
       .settings-btn {
