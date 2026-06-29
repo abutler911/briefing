@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Tab</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: #0a0a0c;
+        --surface: rgba(255, 255, 255, 0.04);
+        --surface-hover: rgba(255, 255, 255, 0.08);
+        --text: #e8e4df;
+        --text-dim: rgba(232, 228, 223, 0.45);
+        --text-mid: rgba(232, 228, 223, 0.65);
+        --crimson: #c23c3c;
+        --amber: #d4a54a;
+        --border: rgba(255, 255, 255, 0.06);
+      }
+
+      body {
+        font-family: "JetBrains Mono", monospace;
+        background: var(--bg);
+        color: var(--text);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        user-select: none;
+      }
+
+      /* Background image layer */
+      .bg-image {
+        position: fixed;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        opacity: 0;
+        transition: opacity 1.5s ease;
+        z-index: 0;
+      }
+      .bg-image.loaded {
+        opacity: 0.55;
+      }
+
+      .bg-overlay {
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            ellipse at center,
+            rgba(10, 10, 12, 0.2) 0%,
+            rgba(10, 10, 12, 0.75) 80%
+          ),
+          linear-gradient(
+            to bottom,
+            rgba(10, 10, 12, 0.4) 0%,
+            rgba(10, 10, 12, 0.15) 40%,
+            rgba(10, 10, 12, 0.5) 100%
+          );
+        z-index: 1;
+      }
+
+      .content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        width: 100%;
+        max-width: 640px;
+        padding: 0 2rem;
+      }
+
+      /* Top bar */
+      .top-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 1.5rem 2rem;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+
+      .date-display {
+        color: var(--text-mid);
+      }
+      .weather-display {
+        text-align: right;
+        cursor: pointer;
+        transition: color 0.3s;
+      }
+      .weather-display:hover {
+        color: var(--text);
+      }
+      .weather-temp {
+        font-size: 1.4rem;
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--text-mid);
+      }
+      .weather-desc {
+        margin-top: 2px;
+      }
+
+      /* Clock */
+      .clock {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: clamp(5rem, 14vw, 10rem);
+        line-height: 1;
+        letter-spacing: -0.02em;
+        color: var(--text);
+        margin-bottom: 0.2em;
+        text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+      }
+
+      /* Mantra */
+      .mantra {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-style: italic;
+        font-size: clamp(1.2rem, 3vw, 1.8rem);
+        color: var(--text-mid);
+        letter-spacing: 0.04em;
+        text-align: center;
+        margin-bottom: 3rem;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+      }
+
+      /* Todo section */
+      .todo-section {
+        width: 100%;
+        max-width: 380px;
+        background: rgba(10, 10, 12, 0.45);
+        backdrop-filter: blur(12px);
+        border-radius: 4px;
+        padding: 1.2rem 1.4rem;
+        border: 1px solid var(--border);
+      }
+
+      .todo-label {
+        font-size: 0.6rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 0.6rem;
+        text-align: center;
+      }
+
+      .todo-list {
+        list-style: none;
+      }
+      .todo-item {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.85rem;
+        font-weight: 300;
+        color: var(--text-mid);
+        transition: color 0.3s;
+      }
+      .todo-item:hover {
+        color: var(--text);
+      }
+
+      .todo-check {
+        width: 14px;
+        height: 14px;
+        border: 1px solid var(--text-dim);
+        border-radius: 2px;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .todo-check:hover {
+        border-color: var(--crimson);
+      }
+      .todo-check.done {
+        border-color: var(--crimson);
+        background: var(--crimson);
+      }
+      .todo-check.done::after {
+        content: "✓";
+        color: var(--bg);
+        font-size: 10px;
+      }
+      .todo-item.done .todo-text {
+        text-decoration: line-through;
+        color: var(--text-dim);
+        opacity: 0.5;
+      }
+
+      .todo-text {
+        flex: 1;
+        background: none;
+        border: none;
+        color: inherit;
+        font: inherit;
+        outline: none;
+      }
+
+      .todo-delete {
+        opacity: 0;
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 0 0.2rem;
+        transition:
+          opacity 0.2s,
+          color 0.2s;
+      }
+      .todo-item:hover .todo-delete {
+        opacity: 1;
+      }
+      .todo-delete:hover {
+        color: var(--crimson);
+      }
+
+      .todo-add {
+        width: 100%;
+        background: none;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-dim);
+        font:
+          300 0.85rem "JetBrains Mono",
+          monospace;
+        padding: 0.6rem 0;
+        padding-left: calc(14px + 0.7rem);
+        outline: none;
+        transition:
+          border-color 0.3s,
+          color 0.3s;
+      }
+      .todo-add::placeholder {
+        color: var(--text-dim);
+        opacity: 0.5;
+      }
+      .todo-add:focus {
+        border-color: var(--crimson);
+        color: var(--text);
+      }
+
+      /* Bottom bar */
+      .bottom-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 1.5rem 2rem;
+      }
+
+      .quote {
+        max-width: 360px;
+        font-family: "Cormorant Garamond", serif;
+        font-size: 0.85rem;
+        font-style: italic;
+        font-weight: 300;
+        line-height: 1.5;
+        color: var(--text-dim);
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+      }
+      .quote-attr {
+        font-style: normal;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.55rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-top: 0.3rem;
+        color: var(--text-dim);
+        opacity: 0.6;
+      }
+
+      .settings-btn {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        font:
+          300 0.6rem "JetBrains Mono",
+          monospace;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.4rem 0.8rem;
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.3s;
+      }
+      .settings-btn:hover {
+        border-color: var(--text-mid);
+        color: var(--text);
+      }
+
+      /* Settings modal */
+      .settings-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(8px);
+      }
+      .settings-overlay.open {
+        display: flex;
+      }
+
+      .settings-panel {
+        background: #111114;
+        border: 1px solid var(--border);
+        padding: 2.5rem;
+        width: 90%;
+        max-width: 440px;
+        border-radius: 3px;
+      }
+
+      .settings-title {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 300;
+        font-size: 1.4rem;
+        margin-bottom: 1.8rem;
+        color: var(--text);
+      }
+
+      .settings-group {
+        margin-bottom: 1.4rem;
+      }
+
+      .settings-label {
+        font-size: 0.6rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 0.4rem;
+      }
+
+      .settings-input {
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font:
+          300 0.8rem "JetBrains Mono",
+          monospace;
+        padding: 0.6rem 0.8rem;
+        outline: none;
+        border-radius: 2px;
+        transition: border-color 0.3s;
+      }
+      .settings-input:focus {
+        border-color: var(--crimson);
+      }
+      .settings-hint {
+        font-size: 0.6rem;
+        color: var(--text-dim);
+        opacity: 0.6;
+        margin-top: 0.3rem;
+        line-height: 1.5;
+      }
+
+      .settings-actions {
+        display: flex;
+        gap: 0.8rem;
+        margin-top: 2rem;
+        justify-content: flex-end;
+      }
+
+      .btn {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-mid);
+        font:
+          300 0.65rem "JetBrains Mono",
+          monospace;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.5rem 1.2rem;
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.3s;
+      }
+      .btn:hover {
+        border-color: var(--text-mid);
+        color: var(--text);
+      }
+      .btn.primary {
+        background: var(--crimson);
+        border-color: var(--crimson);
+        color: #fff;
+      }
+      .btn.primary:hover {
+        background: #a83232;
+        border-color: #a83232;
+      }
+
+      /* Fade in */
+      .content,
+      .top-bar,
+      .bottom-bar {
+        animation: fadeUp 1s ease forwards;
+        opacity: 0;
+      }
+      .top-bar {
+        animation-delay: 0.2s;
+      }
+      .content {
+        animation-delay: 0.1s;
+      }
+      .bottom-bar {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-image" id="bgImage"></div>
+    <div class="bg-overlay"></div>
+
+    <div class="top-bar">
+      <div class="date-display" id="dateDisplay"></div>
+      <div class="weather-display" id="weatherDisplay" onclick="openSettings()">
+        <div class="weather-temp" id="weatherTemp">--°</div>
+        <div class="weather-desc" id="weatherDesc">click to set up</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="clock" id="clock"></div>
+      <div class="mantra" id="mantra"></div>
+
+      <div class="todo-section">
+        <div class="todo-label">Today</div>
+        <ul class="todo-list" id="todoList"></ul>
+        <input
+          class="todo-add"
+          id="todoAdd"
+          type="text"
+          placeholder="+ add a task"
+        />
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="quote" id="quoteDisplay"></div>
+      <button class="settings-btn" onclick="openSettings()">settings</button>
+    </div>
+
+    <div
+      class="settings-overlay"
+      id="settingsOverlay"
+      onclick="closeSettingsOutside(event)"
+    >
+      <div class="settings-panel">
+        <div class="settings-title">Settings</div>
+        <div class="settings-group">
+          <div class="settings-label">OpenWeatherMap API Key</div>
+          <input
+            class="settings-input"
+            id="apiKeyInput"
+            type="text"
+            placeholder="paste your API key"
+          />
+          <div class="settings-hint">
+            Free at openweathermap.org/api — takes ~2hrs to activate after
+            signup
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-label">Location</div>
+          <input
+            class="settings-input"
+            id="locationInput"
+            type="text"
+            placeholder="e.g. Salt Lake City"
+          />
+        </div>
+        <div class="settings-group">
+          <div class="settings-label">Temperature Unit</div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.3rem">
+            <button
+              class="btn unit-btn"
+              data-unit="imperial"
+              onclick="setUnit('imperial')"
+            >
+              °F
+            </button>
+            <button
+              class="btn unit-btn"
+              data-unit="metric"
+              onclick="setUnit('metric')"
+            >
+              °C
+            </button>
+          </div>
+        </div>
+        <div class="settings-actions">
+          <button class="btn" onclick="closeSettings()">Cancel</button>
+          <button class="btn primary" onclick="saveSettings()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ── State ──
+      const LS = (key) => `newtab_${key}`;
+      const get = (key) => localStorage.getItem(LS(key));
+      const set = (key, val) => localStorage.setItem(LS(key), val);
+
+      // ── Clock ──
+      function updateClock() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, "0");
+        const m = String(now.getMinutes()).padStart(2, "0");
+        document.getElementById("clock").textContent = `${h}:${m}`;
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // ── Date ──
+      function updateDate() {
+        const now = new Date();
+        const opts = { weekday: "long", month: "long", day: "numeric" };
+        document.getElementById("dateDisplay").textContent =
+          now.toLocaleDateString("en-US", opts);
+      }
+      updateDate();
+
+      // ── Seeded daily random ──
+      function dayOfYear() {
+        const now = new Date();
+        return Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+      }
+
+      function seededRandom(seed) {
+        // Simple hash-based PRNG for daily rotation
+        let h = seed;
+        return function () {
+          h = (h * 16807 + 0) % 2147483647;
+          return (h - 1) / 2147483646;
+        };
+      }
+
+      function dailyPick(arr, offset = 0) {
+        const rng = seededRandom(
+          dayOfYear() * 31 + offset + new Date().getFullYear() * 7,
+        );
+        return arr[Math.floor(rng() * arr.length)];
+      }
+
+      // ── Mantra ──
+      const mantras = [
+        "Breathe.",
+        "Begin.",
+        "Stay sharp.",
+        "Trust the process.",
+        "One thing at a time.",
+        "Commit.",
+        "Be here.",
+        "Do the work.",
+        "Less noise.",
+        "Forward.",
+        "Keep climbing.",
+        "Steady hands.",
+        "Stay the course.",
+        "Earn it.",
+        "Focus.",
+        "Show up.",
+        "Move.",
+        "Build.",
+        "No shortcuts.",
+        "This matters.",
+        "Eyes up.",
+        "Simplify.",
+        "Finish what you start.",
+        "Make it count.",
+        "Hold the line.",
+      ];
+
+      const mantraEl = document.getElementById("mantra");
+      mantraEl.textContent = dailyPick(mantras, 0);
+
+      // ── Todos ──
+      function getTodos() {
+        try {
+          const today = new Date().toDateString();
+          const stored = JSON.parse(get("todos") || "{}");
+          if (stored.date !== today) {
+            // Keep undone tasks, clear done ones for new day
+            const carried = (stored.items || []).filter((t) => !t.done);
+            return { date: today, items: carried };
+          }
+          return stored;
+        } catch {
+          return { date: new Date().toDateString(), items: [] };
+        }
+      }
+
+      function saveTodos(data) {
+        set("todos", JSON.stringify(data));
+      }
+
+      function renderTodos() {
+        const data = getTodos();
+        const list = document.getElementById("todoList");
+        list.innerHTML = "";
+        data.items.forEach((todo, i) => {
+          const li = document.createElement("li");
+          li.className = `todo-item${todo.done ? " done" : ""}`;
+          li.innerHTML = `
+      <div class="todo-check${todo.done ? " done" : ""}" onclick="toggleTodo(${i})"></div>
+      <span class="todo-text">${escHtml(todo.text)}</span>
+      <button class="todo-delete" onclick="deleteTodo(${i})">×</button>
+    `;
+          list.appendChild(li);
+        });
+      }
+
+      function addTodo(text) {
+        if (!text.trim()) return;
+        const data = getTodos();
+        data.items.push({ text: text.trim(), done: false });
+        saveTodos(data);
+        renderTodos();
+      }
+
+      function toggleTodo(i) {
+        const data = getTodos();
+        data.items[i].done = !data.items[i].done;
+        saveTodos(data);
+        renderTodos();
+      }
+
+      function deleteTodo(i) {
+        const data = getTodos();
+        data.items.splice(i, 1);
+        saveTodos(data);
+        renderTodos();
+      }
+
+      function escHtml(s) {
+        const d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      document.getElementById("todoAdd").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          addTodo(e.target.value);
+          e.target.value = "";
+        }
+      });
+
+      renderTodos();
+
+      // ── Quotes ──
+      const quotes = [
+        { text: "The only way out is through.", attr: "Robert Frost" },
+        {
+          text: "We suffer more often in imagination than in reality.",
+          attr: "Seneca",
+        },
+        { text: "The obstacle is the way.", attr: "Marcus Aurelius" },
+        {
+          text: "What a disgrace it is for a man to grow old without ever seeing the beauty and strength of which his body is capable.",
+          attr: "Socrates",
+        },
+        {
+          text: "A man who dares to waste one hour of time has not discovered the value of life.",
+          attr: "Charles Darwin",
+        },
+        {
+          text: "Do not go where the path may lead, go instead where there is no path and leave a trail.",
+          attr: "Emerson",
+        },
+        {
+          text: "It is not the critic who counts; not the man who points out how the strong man stumbles.",
+          attr: "Theodore Roosevelt",
+        },
+        {
+          text: "The best time to plant a tree was twenty years ago. The second best time is now.",
+          attr: "Proverb",
+        },
+        {
+          text: "You must be ready to burn yourself in your own flame. How could you become new, if you had not first become ashes?",
+          attr: "Nietzsche",
+        },
+        {
+          text: "The world breaks everyone, and afterward, some are strong at the broken places.",
+          attr: "Hemingway",
+        },
+        {
+          text: "Ships in harbor are safe, but that's not what ships are built for.",
+          attr: "John A. Shedd",
+        },
+        { text: "Discipline equals freedom.", attr: "Jocko Willink" },
+        {
+          text: "The man who moves a mountain begins by carrying away small stones.",
+          attr: "Confucius",
+        },
+        {
+          text: "He who has a why to live can bear almost any how.",
+          attr: "Nietzsche",
+        },
+        {
+          text: "No man is free who is not master of himself.",
+          attr: "Epictetus",
+        },
+        {
+          text: "Waste no more time arguing about what a good man should be. Be one.",
+          attr: "Marcus Aurelius",
+        },
+        {
+          text: "The happiness of your life depends upon the quality of your thoughts.",
+          attr: "Marcus Aurelius",
+        },
+        {
+          text: "It does not matter how slowly you go as long as you do not stop.",
+          attr: "Confucius",
+        },
+        {
+          text: "Difficulties strengthen the mind, as labor does the body.",
+          attr: "Seneca",
+        },
+        {
+          text: "The impediment to action advances action. What stands in the way becomes the way.",
+          attr: "Marcus Aurelius",
+        },
+        {
+          text: "First say to yourself what you would be; and then do what you have to do.",
+          attr: "Epictetus",
+        },
+        { text: "Fortune favors the bold.", attr: "Virgil" },
+        {
+          text: "Every man dies. Not every man really lives.",
+          attr: "William Wallace",
+        },
+        {
+          text: "There is nothing outside of yourself that can ever enable you to get better, stronger, richer, quicker, or smarter. Everything is within.",
+          attr: "Miyamoto Musashi",
+        },
+        {
+          text: "A gem cannot be polished without friction, nor a man perfected without trials.",
+          attr: "Seneca",
+        },
+        {
+          text: "The mind is everything. What you think, you become.",
+          attr: "Buddha",
+        },
+        {
+          text: "To see what is right and not do it is a want of courage.",
+          attr: "Confucius",
+        },
+        { text: "The unexamined life is not worth living.", attr: "Socrates" },
+        {
+          text: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.",
+          attr: "Aristotle",
+        },
+        {
+          text: "If you are going through hell, keep going.",
+          attr: "Churchill",
+        },
+      ];
+
+      const dailyQuote = dailyPick(quotes, 17); // offset 17 so mantra and quote don't share a seed
+
+      function showQuote() {
+        document.getElementById("quoteDisplay").innerHTML = `
+    "${dailyQuote.text}"
+    <div class="quote-attr">${dailyQuote.attr}</div>
+  `;
+      }
+
+      showQuote();
+
+      // ── Weather ──
+      async function fetchWeather() {
+        const apiKey = get("weather_api_key");
+        const location = get("weather_location") || "Salt Lake City";
+        const unit = get("weather_unit") || "imperial";
+        if (!apiKey) return;
+
+        try {
+          const res = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&appid=${apiKey}&units=${unit}`,
+          );
+          if (!res.ok) throw new Error("Weather fetch failed");
+          const data = await res.json();
+          const symbol = unit === "imperial" ? "F" : "C";
+          document.getElementById("weatherTemp").textContent =
+            `${Math.round(data.main.temp)}°${symbol}`;
+          document.getElementById("weatherDesc").textContent =
+            `${data.weather[0].description} · ${location}`;
+        } catch (e) {
+          document.getElementById("weatherDesc").textContent =
+            "weather unavailable";
+        }
+      }
+
+      fetchWeather();
+      setInterval(fetchWeather, 600000); // refresh every 10 min
+
+      // ── Background ──
+      // Rotating dark atmospheric images from Unsplash (free, no API key needed)
+      const bgImages = [
+        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80", // mountains
+        "https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=1920&q=80", // fog mountains
+        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80", // forest
+        "https://images.unsplash.com/photo-1505144808419-1957a94ca61e?w=1920&q=80", // sunrise
+        "https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?w=1920&q=80", // valley
+      ];
+
+      function loadBackground() {
+        const dayOfYear = Math.floor(
+          (Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000,
+        );
+        const img = bgImages[dayOfYear % bgImages.length];
+        const bgEl = document.getElementById("bgImage");
+        const preload = new Image();
+        preload.onload = () => {
+          bgEl.style.backgroundImage = `url(${img})`;
+          bgEl.classList.add("loaded");
+        };
+        preload.src = img;
+      }
+      loadBackground();
+
+      // ── Settings ──
+      let selectedUnit = get("weather_unit") || "imperial";
+
+      function setUnit(u) {
+        selectedUnit = u;
+        document.querySelectorAll(".unit-btn").forEach((btn) => {
+          btn.style.borderColor =
+            btn.dataset.unit === u ? "var(--crimson)" : "";
+          btn.style.color = btn.dataset.unit === u ? "var(--text)" : "";
+        });
+      }
+
+      function openSettings() {
+        document.getElementById("apiKeyInput").value =
+          get("weather_api_key") || "";
+        document.getElementById("locationInput").value =
+          get("weather_location") || "Salt Lake City";
+        setUnit(get("weather_unit") || "imperial");
+        document.getElementById("settingsOverlay").classList.add("open");
+      }
+
+      function closeSettings() {
+        document.getElementById("settingsOverlay").classList.remove("open");
+      }
+
+      function closeSettingsOutside(e) {
+        if (e.target === document.getElementById("settingsOverlay"))
+          closeSettings();
+      }
+
+      function saveSettings() {
+        set(
+          "weather_api_key",
+          document.getElementById("apiKeyInput").value.trim(),
+        );
+        set(
+          "weather_location",
+          document.getElementById("locationInput").value.trim() ||
+            "Salt Lake City",
+        );
+        set("weather_unit", selectedUnit);
+        closeSettings();
+        fetchWeather();
+      }
+    </script>
+  </body>
+</html>
