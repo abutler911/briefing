@@ -42,6 +42,7 @@
         background: var(--bg);
         color: var(--text);
         min-height: 100vh;
+        min-height: 100dvh; /* track the visual viewport when the keyboard opens */
         overflow-x: hidden;
         overflow-y: auto;
         display: flex;
@@ -637,6 +638,121 @@
         }
       }
 
+      /* Forecast strip (next few hours, under the weather block) */
+      .weather-forecast {
+        margin-top: 4px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.7rem;
+        font-size: 0.6rem;
+        letter-spacing: 0.04em;
+        color: var(--text-mid);
+        opacity: 0.85;
+      }
+      .weather-forecast:empty {
+        display: none;
+      }
+      .fc-slot {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
+      }
+      .fc-icon {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        line-height: 1;
+      }
+      .fc-time {
+        font-size: 0.5rem;
+        opacity: 0.8;
+      }
+
+      /* Favicon fallback tile (letter) for quick links */
+      .ql-fallback {
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--text);
+        font-size: 0.7rem;
+        font-weight: 400;
+        text-transform: uppercase;
+      }
+
+      /* Focus streak badge + daily check-in */
+      .focus-streak {
+        margin-top: 0.7rem;
+        font-size: 0.62rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--amber);
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+      }
+      .focus-checkin-text {
+        font-family: "Cormorant Garamond", serif;
+        font-style: italic;
+        font-size: clamp(1.1rem, 2.6vw, 1.5rem);
+        color: var(--text-mid);
+        margin-bottom: 1rem;
+        text-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.55),
+          0 2px 16px rgba(0, 0, 0, 0.4);
+      }
+      .focus-checkin-text .focus-task {
+        color: var(--amber);
+        font-style: italic;
+      }
+      .focus-checkin-actions {
+        display: flex;
+        gap: 0.7rem;
+        justify-content: center;
+      }
+
+      /* "Detect" button sits inline with a text input */
+      .input-row {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .input-row .settings-input {
+        flex: 1;
+      }
+      .btn.inline {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+
+      /* Small modal (add quick link), reuses the settings overlay backdrop */
+      .mini-panel {
+        width: 90%;
+        max-width: 360px;
+      }
+
+      /* Screen-reader-only text */
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* Keyboard focus ring for the interactive non-button elements */
+      [role="button"]:focus-visible,
+      a:focus-visible,
+      button:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--text-mid);
+        outline-offset: 3px;
+      }
+
       /* ── Mobile ── */
       @media (max-width: 600px) {
         /* Tighten the fixed bars and respect notch / status-bar insets */
@@ -689,6 +805,34 @@
           max-width: 92%;
           line-height: 1.4;
         }
+
+        .weather-forecast {
+          gap: 0.55rem;
+          font-size: 0.55rem;
+        }
+
+        /* Keyboard focus mode: when an input is active, the on-screen keyboard
+           collapses the viewport. Pin the active field near the top and hide the
+           supporting chrome so nothing gets squished behind the keyboard. */
+        body.editing {
+          justify-content: flex-start;
+        }
+        body.editing .content {
+          padding-top: 2.2rem;
+        }
+        body.editing .greeting,
+        body.editing .mantra,
+        body.editing .quick-links,
+        body.editing .bottom-bar,
+        body.editing .photo-credit {
+          /* !important so it beats the fadeUp load animation on .bottom-bar */
+          opacity: 0 !important;
+          pointer-events: none;
+        }
+        body.editing .clock {
+          font-size: clamp(3rem, 11vw, 5rem);
+          margin-bottom: 0.1em;
+        }
       }
 
       /* Respect users who prefer reduced motion */
@@ -715,13 +859,20 @@
 
     <div class="top-bar">
       <div class="date-display" id="dateDisplay"></div>
-      <div class="weather-display" id="weatherDisplay">
+      <div
+        class="weather-display"
+        id="weatherDisplay"
+        role="button"
+        tabindex="0"
+        aria-label="Weather — open settings"
+      >
         <div class="weather-temp">
-          <span class="weather-icon" id="weatherIcon"></span
+          <span class="weather-icon" id="weatherIcon" aria-hidden="true"></span
           ><span id="weatherTemp">--°</span>
         </div>
         <div class="weather-desc" id="weatherDesc">click to set up</div>
         <div class="weather-extra" id="weatherExtra"></div>
+        <div class="weather-forecast" id="weatherForecast"></div>
       </div>
     </div>
 
@@ -736,18 +887,27 @@
           id="searchInput"
           type="text"
           placeholder="Search the web"
+          aria-label="Search the web"
           autocomplete="off"
           spellcheck="false"
         />
       </form>
 
       <div class="focus-card" id="focusCard">
+        <div class="focus-checkin" id="focusCheckin" hidden>
+          <div class="focus-checkin-text" id="focusCheckinText"></div>
+          <div class="focus-checkin-actions">
+            <button class="btn primary" id="focusYes">I did it</button>
+            <button class="btn" id="focusNo">Not quite</button>
+          </div>
+        </div>
         <div class="focus-prompt" id="focusPrompt">
           <div class="focus-question" id="focusQuestion"></div>
           <input
             class="focus-entry"
             id="focusEntry"
             type="text"
+            aria-label="Your main focus for the day"
             autocomplete="off"
             spellcheck="false"
           />
@@ -756,8 +916,12 @@
           class="focus-answer"
           id="focusAnswer"
           title="Click to change your focus"
+          role="button"
+          tabindex="0"
+          aria-label="Change your focus for today"
           hidden
         ></div>
+        <div class="focus-streak" id="focusStreak" hidden></div>
       </div>
 
       <div class="quick-links" id="quickLinks"></div>
@@ -768,6 +932,9 @@
         class="quote"
         id="quoteDisplay"
         title="Click for a new quote"
+        role="button"
+        tabindex="0"
+        aria-label="Show a new quote"
       ></div>
       <button class="settings-btn" id="settingsBtn">settings</button>
     </div>
@@ -893,12 +1060,18 @@
         </div>
         <div class="settings-group">
           <div class="settings-label">Location</div>
-          <input
-            class="settings-input"
-            id="locationInput"
-            type="text"
-            placeholder="e.g. Salt Lake City"
-          />
+          <div class="input-row">
+            <input
+              class="settings-input"
+              id="locationInput"
+              type="text"
+              placeholder="e.g. Salt Lake City"
+            />
+            <button class="btn inline" id="detectLocationBtn" type="button">
+              Detect
+            </button>
+          </div>
+          <div class="settings-hint" id="detectHint"></div>
         </div>
         <div class="settings-group">
           <div class="settings-label">Temperature Unit</div>
@@ -910,6 +1083,36 @@
         <div class="settings-actions">
           <button class="btn" id="cancelBtn">Cancel</button>
           <button class="btn primary" id="saveBtn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-overlay" id="linkOverlay">
+      <div class="settings-panel mini-panel">
+        <div class="settings-title">Add a quick link</div>
+        <div class="settings-group">
+          <div class="settings-label">URL</div>
+          <input
+            class="settings-input"
+            id="linkUrlInput"
+            type="text"
+            placeholder="e.g. github.com"
+            autocomplete="off"
+          />
+        </div>
+        <div class="settings-group">
+          <div class="settings-label">Label (optional)</div>
+          <input
+            class="settings-input"
+            id="linkLabelInput"
+            type="text"
+            placeholder="shown under the icon"
+            autocomplete="off"
+          />
+        </div>
+        <div class="settings-actions">
+          <button class="btn" id="linkCancelBtn">Cancel</button>
+          <button class="btn primary" id="linkSaveBtn">Add</button>
         </div>
       </div>
     </div>
