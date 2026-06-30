@@ -637,6 +637,60 @@
         }
       }
 
+      /* ── Mobile ── */
+      @media (max-width: 600px) {
+        /* Tighten the fixed bars and respect notch / status-bar insets */
+        .top-bar {
+          padding: calc(1.1rem + env(safe-area-inset-top)) 1.25rem 1.1rem;
+          font-size: 0.7rem;
+          letter-spacing: 0.06em;
+          gap: 1rem;
+        }
+        .date-display {
+          flex-shrink: 0;
+        }
+        .weather-temp {
+          font-size: 1.45rem;
+        }
+        .weather-desc {
+          font-size: 0.62rem;
+          letter-spacing: 0.04em;
+        }
+        .weather-extra {
+          font-size: 0.55rem;
+        }
+
+        /* Keep content clear of both fixed bars on short screens */
+        .content {
+          padding: 4.5rem 1.5rem;
+        }
+
+        .bottom-bar {
+          /* Extra bottom space so the corner items clear the centered credit */
+          padding: 1.25rem 1.25rem calc(2.6rem + env(safe-area-inset-bottom));
+          gap: 1rem;
+        }
+        .quote {
+          font-size: 0.92rem;
+          line-height: 1.45;
+        }
+        .quote-attr {
+          font-size: 0.6rem;
+        }
+        .settings-btn {
+          flex-shrink: 0;
+        }
+
+        .photo-credit {
+          bottom: calc(0.5rem + env(safe-area-inset-bottom));
+          font-size: 0.5rem;
+          white-space: normal;
+          text-align: center;
+          max-width: 92%;
+          line-height: 1.4;
+        }
+      }
+
       /* Respect users who prefer reduced motion */
       @media (prefers-reduced-motion: reduce) {
         .content,
