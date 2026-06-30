@@ -1,16 +1,18 @@
 # Briefing
 
-A custom new tab page. Clock, daily mantra, todos, weather, and a rotating quote -- everything you need before you go do the thing.
+A custom new tab page. Clock, daily mantra, daily focus, weather, and a rotating quote -- everything you need before you go do the thing.
 
 ## Features
 
 - **Clock** with Inter sans-serif display type; 12/24-hour and optional seconds in settings
 - **Greeting** -- time-of-day greeting with an optional name
 - **Daily mantra** -- seeded random rotation, new one each day
-- **Todo list** -- localStorage persistence, carries undone tasks forward, clears completed ones at midnight
-- **Weather** -- OpenWeatherMap integration (free API key required)
+- **Daily focus** -- set one focus per day; the next day it checks in on whether you did it and tracks a streak
+- **Weather** -- OpenWeatherMap integration (free API key required), with a short hourly forecast and one-tap geolocation detect
 - **Daily quote** -- 30 quotes, deterministic daily rotation
 - **Background images** -- rotating landscape photography, subtle overlay for readability
+- **Quick links** -- favicon tiles (with a letter fallback) for your go-to sites
+- **Mobile-aware** -- responsive layout, safe-area insets, and a keyboard-focus mode so inputs aren't squished by the on-screen keyboard
 
 ## Setup
 

@@ -126,33 +126,81 @@ const mantras = [
 const mantraEl = document.getElementById("mantra");
 mantraEl.textContent = dailyPick(mantras, 0);
 
-// ── Daily focus ──
+// ── Daily focus + streak ──
 // First view of the day asks for the day's focus; after that it's shown as a
-// statement. Stored per day, so it re-prompts each new day.
+// statement. The next day, before asking again, we check in on whether the
+// previous focus got done — answering keeps a streak going (or resets it).
+function getFocusRecord() {
+  try {
+    return JSON.parse(get("focus") || "{}");
+  } catch {
+    return {};
+  }
+}
+
 function getFocusText() {
   const today = new Date().toDateString();
-  try {
-    const stored = JSON.parse(get("focus") || "{}");
-    return stored.date === today ? stored.text || "" : "";
-  } catch {
-    return "";
-  }
+  const r = getFocusRecord();
+  return r.date === today ? r.text || "" : "";
 }
 
 function saveFocusText(text) {
   set("focus", JSON.stringify({ date: new Date().toDateString(), text }));
 }
 
+function getStreak() {
+  return Number(get("focus_streak")) || 0;
+}
+function setStreak(n) {
+  set("focus_streak", String(Math.max(0, n)));
+}
+
+function renderStreak() {
+  const el = document.getElementById("focusStreak");
+  const n = getStreak();
+  el.hidden = n <= 0;
+  el.textContent = n > 0 ? `🔥 ${n}-day streak` : "";
+}
+
+function questionText() {
+  const name = (get("user_name") || "").trim();
+  return name
+    ? `${name}, what is your main focus for the day?`
+    : "What is your main focus for the day?";
+}
+
 function renderFocus() {
   const name = (get("user_name") || "").trim();
-  const text = getFocusText();
+  const today = new Date().toDateString();
+  const record = getFocusRecord();
+  const checkinEl = document.getElementById("focusCheckin");
   const promptEl = document.getElementById("focusPrompt");
   const answerEl = document.getElementById("focusAnswer");
 
+  // A focus from a previous day that hasn't been reviewed → ask how it went.
+  if (record.text && record.date && record.date !== today && !record.reviewed) {
+    promptEl.hidden = true;
+    answerEl.hidden = true;
+    checkinEl.hidden = false;
+    // Built with DOM nodes so the focus text can't inject markup.
+    const textEl = document.getElementById("focusCheckinText");
+    textEl.textContent = name
+      ? `${name}, yesterday you set out to `
+      : "Yesterday you set out to ";
+    const task = document.createElement("span");
+    task.className = "focus-task";
+    task.textContent = record.text;
+    textEl.appendChild(task);
+    textEl.appendChild(document.createTextNode(". Did you follow through?"));
+    renderStreak();
+    return;
+  }
+  checkinEl.hidden = true;
+
+  const text = record.date === today ? record.text || "" : "";
   if (text) {
     promptEl.hidden = true;
     answerEl.hidden = false;
-    // Built with DOM nodes so the focus text can't inject markup.
     answerEl.textContent = name
       ? `${name}, today you are focused on `
       : "Today you are focused on ";
@@ -164,23 +212,30 @@ function renderFocus() {
   } else {
     answerEl.hidden = true;
     promptEl.hidden = false;
-    document.getElementById("focusQuestion").textContent = name
-      ? `${name}, what is your main focus for the day?`
-      : "What is your main focus for the day?";
+    document.getElementById("focusQuestion").textContent = questionText();
     document.getElementById("focusEntry").value = "";
   }
+  renderStreak();
 }
 
 function editFocus() {
-  const name = (get("user_name") || "").trim();
   document.getElementById("focusAnswer").hidden = true;
   document.getElementById("focusPrompt").hidden = false;
-  document.getElementById("focusQuestion").textContent = name
-    ? `${name}, what is your main focus for the day?`
-    : "What is your main focus for the day?";
+  document.getElementById("focusQuestion").textContent = questionText();
   const entry = document.getElementById("focusEntry");
   entry.value = getFocusText();
   entry.focus();
+}
+
+// Resolve the daily check-in: completing keeps the streak going, missing it
+// resets to zero. Either way the old record is marked reviewed so we don't ask
+// again, then today's prompt takes over.
+function resolveCheckin(done) {
+  const record = getFocusRecord();
+  setStreak(done ? getStreak() + 1 : 0);
+  record.reviewed = true;
+  set("focus", JSON.stringify(record));
+  renderFocus();
 }
 
 renderFocus();
@@ -331,6 +386,7 @@ function setWeatherError(msg) {
   document.getElementById("weatherIcon").textContent = "";
   document.getElementById("weatherDesc").textContent = msg;
   document.getElementById("weatherExtra").textContent = "";
+  document.getElementById("weatherForecast").textContent = "";
 }
 
 async function fetchWeather() {
@@ -369,9 +425,98 @@ async function fetchWeather() {
       `${data.weather[0].description} · ${location}`;
     document.getElementById("weatherExtra").textContent =
       `feels ${r(data.main.feels_like)}° · ↑${r(data.main.temp_max)}° ↓${r(data.main.temp_min)}°`;
+    fetchForecast();
   } catch (e) {
     setWeatherError("weather unavailable · network error");
   }
+}
+
+// ── Forecast (next few hours) ──
+function fcTimeLabel(date) {
+  const fmt = get("clock_format") || "24h";
+  let h = date.getHours();
+  if (fmt === "12h") {
+    const s = h >= 12 ? "p" : "a";
+    h = h % 12 || 12;
+    return `${h}${s}`;
+  }
+  return `${String(h).padStart(2, "0")}:00`;
+}
+
+function renderForecast(list) {
+  const el = document.getElementById("weatherForecast");
+  el.textContent = "";
+  if (!Array.isArray(list)) return;
+  list.slice(0, 3).forEach((item) => {
+    if (!item || !item.weather || !item.main) return;
+    const slot = document.createElement("div");
+    slot.className = "fc-slot";
+
+    const icon = document.createElement("span");
+    icon.className = "fc-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = weatherEmoji(item.weather[0]);
+
+    const temp = document.createElement("span");
+    temp.textContent = `${Math.round(item.main.temp)}°`;
+
+    const time = document.createElement("span");
+    time.className = "fc-time";
+    time.textContent = fcTimeLabel(new Date(item.dt * 1000));
+
+    slot.append(icon, temp, time);
+    el.appendChild(slot);
+  });
+}
+
+async function fetchForecast() {
+  const apiKey = get("weather_api_key");
+  const location = get("weather_location") || "Salt Lake City";
+  const unit = get("weather_unit") || "imperial";
+  if (!apiKey) return;
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(location)}&appid=${apiKey}&units=${unit}&cnt=3`,
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && Array.isArray(data.list)) renderForecast(data.list);
+  } catch {}
+}
+
+// ── Geolocation: fill the location field from the device's position ──
+function detectLocation() {
+  const hint = document.getElementById("detectHint");
+  if (!navigator.geolocation) {
+    hint.textContent = "Geolocation isn't available in this browser.";
+    return;
+  }
+  hint.textContent = "Detecting…";
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      try {
+        const res = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+        );
+        const data = await res.json();
+        const city =
+          data.city || data.locality || data.principalSubdivision || "";
+        if (city) {
+          document.getElementById("locationInput").value = city;
+          hint.textContent = `Found ${city} — click Save to apply.`;
+        } else {
+          hint.textContent = "Couldn't determine a city name.";
+        }
+      } catch {
+        hint.textContent = "Reverse lookup failed.";
+      }
+    },
+    () => {
+      hint.textContent = "Location permission denied.";
+    },
+    { timeout: 10000 },
+  );
 }
 
 fetchWeather();
@@ -562,6 +707,7 @@ function openSettings() {
   selectedSeconds = get("clock_seconds") === "true";
   document.getElementById("secondsBtn").textContent =
     `Seconds: ${selectedSeconds ? "on" : "off"}`;
+  document.getElementById("detectHint").textContent = "";
   document.getElementById("settingsOverlay").classList.add("open");
 }
 
@@ -662,6 +808,16 @@ function normalizeUrl(raw) {
   return /^https?:\/\//i.test(v) ? v : `https://${v}`;
 }
 
+// A letter tile shown when a site has no fetchable favicon.
+function makeFallback(link) {
+  const fallback = document.createElement("span");
+  fallback.className = "ql-fallback";
+  fallback.setAttribute("aria-hidden", "true");
+  const labelText = link.label || labelFor(link.url) || "?";
+  fallback.textContent = labelText.charAt(0);
+  return fallback;
+}
+
 // Built with DOM nodes (not innerHTML) so user-provided URLs/labels can't
 // inject markup and to keep the AMO validator happy.
 function renderLinks() {
@@ -674,11 +830,17 @@ function renderLinks() {
     tile.href = link.url;
     tile.title = link.label || link.url;
 
-    const img = document.createElement("img");
-    img.className = "ql-icon";
-    img.alt = "";
-    img.src = faviconFor(link.url);
-    tile.appendChild(img);
+    const iconUrl = faviconFor(link.url);
+    if (iconUrl) {
+      const img = document.createElement("img");
+      img.className = "ql-icon";
+      img.alt = "";
+      img.src = iconUrl;
+      img.addEventListener("error", () => img.replaceWith(makeFallback(link)));
+      tile.appendChild(img);
+    } else {
+      tile.appendChild(makeFallback(link));
+    }
 
     const label = document.createElement("span");
     label.className = "ql-label";
@@ -703,16 +865,29 @@ function renderLinks() {
   el.appendChild(add);
 }
 
-function addLink() {
-  const raw = window.prompt("Quick link URL (e.g. github.com):");
-  if (raw === null) return;
-  const url = normalizeUrl(raw);
-  if (!url) return;
-  const name = (window.prompt("Label (optional):", labelFor(url)) || "").trim();
+function openLinkModal() {
+  document.getElementById("linkUrlInput").value = "";
+  document.getElementById("linkLabelInput").value = "";
+  document.getElementById("linkOverlay").classList.add("open");
+  document.getElementById("linkUrlInput").focus();
+}
+
+function closeLinkModal() {
+  document.getElementById("linkOverlay").classList.remove("open");
+}
+
+function saveLink() {
+  const url = normalizeUrl(document.getElementById("linkUrlInput").value);
+  if (!url) {
+    closeLinkModal();
+    return;
+  }
+  const name = document.getElementById("linkLabelInput").value.trim();
   const links = getLinks();
   links.push({ url, label: name || labelFor(url) });
   saveLinks(links);
   renderLinks();
+  closeLinkModal();
 }
 
 function deleteLink(i) {
@@ -746,7 +921,7 @@ document.getElementById("focusAnswer").addEventListener("click", editFocus);
 document.getElementById("quickLinks").addEventListener("click", (e) => {
   if (e.target.id === "qlAdd") {
     e.preventDefault();
-    addLink();
+    openLinkModal();
     return;
   }
   const del = e.target.closest(".ql-del");
@@ -796,3 +971,53 @@ document
 document.getElementById("secondsBtn").addEventListener("click", toggleSeconds);
 document.getElementById("cancelBtn").addEventListener("click", closeSettings);
 document.getElementById("saveBtn").addEventListener("click", saveSettings);
+document
+  .getElementById("detectLocationBtn")
+  .addEventListener("click", detectLocation);
+
+// Daily focus check-in
+document
+  .getElementById("focusYes")
+  .addEventListener("click", () => resolveCheckin(true));
+document
+  .getElementById("focusNo")
+  .addEventListener("click", () => resolveCheckin(false));
+
+// Add-quick-link modal
+document
+  .getElementById("linkCancelBtn")
+  .addEventListener("click", closeLinkModal);
+document.getElementById("linkSaveBtn").addEventListener("click", saveLink);
+const linkOverlay = document.getElementById("linkOverlay");
+linkOverlay.addEventListener("click", (e) => {
+  if (e.target === linkOverlay) closeLinkModal();
+});
+["linkUrlInput", "linkLabelInput"].forEach((id) =>
+  document.getElementById(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveLink();
+    }
+  }),
+);
+
+// Make the role="button" elements keyboard-activatable (Enter / Space).
+function makeActivatable(el) {
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      el.click();
+    }
+  });
+}
+["weatherDisplay", "quoteDisplay", "focusAnswer"].forEach((id) =>
+  makeActivatable(document.getElementById(id)),
+);
+
+// Keyboard focus mode: collapse the supporting chrome while an input is active
+// so the on-screen keyboard doesn't squish everything together (see CSS).
+["searchInput", "focusEntry"].forEach((id) => {
+  const el = document.getElementById(id);
+  el.addEventListener("focus", () => document.body.classList.add("editing"));
+  el.addEventListener("blur", () => document.body.classList.remove("editing"));
+});
